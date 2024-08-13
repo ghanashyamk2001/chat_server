@@ -17,6 +17,7 @@ const createMessage = async (req, res) => {
     throw err;
   }
   const message = new messageModel({
+    
     chatId,
     senderId,
     text,
