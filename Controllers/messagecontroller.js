@@ -1,38 +1,48 @@
-const messageModel = require ("../Models/messageModel")
+const messageModel = require("../Models/chatModelDbDef").messageDbDef;
+const userModel = require("../Models/chatModelDbDef").userDbDef;
+const genChatId = require("../service/id_gen")
 
-//creating message
-//get message
+const createMessage = async (req, res) => {
+  const body = req.body
+  const { chatId, senderId, text } = body
+  if (text === "") {
+    const err = new Error("No message where entered");
+    err.status = 404;
+    throw err;
+  }
+  const senderUser = await userModel.findByPk(senderId);
+  if (!senderUser) {
+    const err = new Error("sender not found");
+    err.status = 404;
+    throw err;
+  }
+  const message = new messageModel({
+    chatId,
+    senderId,
+    text,
+    id: genChatId(),
+    senderName: senderUser.name,
+  });
 
-const createMessage = async (req, res) =>{
-    const { chatId, senderId, text } = req.body
+  const response = await message.save();
 
-const message = new messageModel({
-    chatId, senderId, text
-})
+  res.status(200).json(response);
+};
 
-try{
-    const response = await message.save()
+const getMessage = async (req, res) => {
+  const body =  req.body
+  const { chatId } = body;
 
-    res.status(200).json(response)
-} catch (error){
-    console.log(error);
-    res.status(500).json(error);
-}
-}
+  const message = await messageModel.findAll({
+    where: { chatId },
+    order: [["createdAt", "ASC"]],
+  });
+  if (message.length === 0) {
+    const err = new Error("No message found in this chat");
+    err.status = 404;
+    throw err;
+  }
+  res.status(200).json(message);
+};
 
-
-const getMessage =async (req, res) => {
-    const { chatId } = req.params
-
-    try{
-
-        const message = await messageModel.find({chatId})
-        res.status(200).json(message)
-
-    } catch (error){
-        console.log(error);
-        res.status(500).json(error);
-    }
-}
-
-module.exports ={ createMessage, getMessage }
+module.exports = { createMessage, getMessage };

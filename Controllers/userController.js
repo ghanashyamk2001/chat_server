@@ -1,7 +1,7 @@
-const userModel = require("../Models/userModel");
+const userModel = require("../Models/chatModelDbDef").userDbDef;
 const bcrypt = require("bcrypt");
-const validator = require("validator");
 const jwt = require("jsonwebtoken");
+const genChatId = require("../service/id_gen");
 
 const createToken = (_id) => {
   const jwtkey = process.env.JWT_SECRET_KEY;
@@ -10,67 +10,64 @@ const createToken = (_id) => {
 };
 
 const registerUser = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
+  const body = req.body
+  const email = body.email
+  const password = body.password
+  const name = body.name
 
-    let user = await userModel.findOne({ email });
+  let user = await userModel.findOne({ where:{email}  });
 
-    if (user)
-      return res.status(400).json("User with given email already exist...");
-
-    if (!name || !email || !password)
-      return res.status(400).json("all fields are to be filled");
-
-    // if (!validator.isStrongPassword(password))
-    //   return res.status(400).json("password must be a strong password...");
-    user = new userModel({ name, email, password });
-
-    const salt = await bcrypt.genSalt(10);
-
-    user.password = await bcrypt.hash(user.password, salt);
-
-    await user.save();
-
-    const token = createToken(user._id);
-
-    res.status(200).json({ _id: user._id, name, email, token });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json(error);
+  if (user) {
+    return res.status(400).json("User with given email already exist...");
   }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashPassword = await bcrypt.hash(password, salt);
+
+  user = userModel.create({
+    name,
+    email,
+    password: hashPassword,
+    id:genChatId()
+  });
+
+  const token = createToken(user.id);
+
+  res.status(200).json({ _id: user.id, name, email, token });
 };
 
-const loginUser = async(req, res)=>{
-    const {email, password} = req.body;
+const loginUser = async (req, res) => {
+  const body = req.body
+  const { email, password} = body
 
-    try{
-        let user = await userModel.findOne({ email });
+  const user = await userModel.findOne({ where: { email } });
 
-        if(!user) return res.status(400).json("Invalid email or password...");
+  if (!user) {
+    return res.status(400).json("Invalid email or password...");
+  }
 
-        const isValidPassword = await bcrypt.compare(password, user.password);
+  const isValidPassword = await bcrypt.compare(password, user.password);
 
-        if (!isValidPassword) return res.status(400).json("Invalid email or password...");
+  if (!isValidPassword) {
+    return res.status(400).json("Invalid email or password...");
+  }
 
-        const token = createToken(user._id);
+  const token = createToken(user.id);
 
-        res.status(200).json({_id: user._id,  name: user.name, email, token });
-    } catch(error){
-        console.log(error);
-        res.status(500).json(error);
-    }
-}
+  res.status(200).json({ _id: user.id, name: user.name, email, token });
+};
 
-const getUsers = async(req, res) => {
-    const userId = req.params.userId
-    try{
-        const users = await userModel.find();
-        
-        res.status(200).json(users);
+const getUsers = async (req, res) => {
+  const body = req.body
+  const data = body._id
 
-    }catch(error){
-        console.log(error);
-        res.status(500).json(error);
-    }
-}
+  const user = await userModel.findByPk(data);
+
+  if (!user) {
+    return res.status(400).json("user not found");
+  }
+
+  res.status(200).json(user);
+};
+
 module.exports = { registerUser, loginUser, getUsers };

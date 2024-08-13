@@ -1,11 +1,12 @@
 const express = require("express")
-const { create } = require("../Models/chatModel")
-const { createChat, findUserChat, findChat } = require("../Controllers/chatcontroller")
+const chatController = require("../Controllers/chatcontroller")
+const asyncHandler = require("../error_controller/asyncHandler")
+
 
 const router = express.Router()
 
-router.post("/", createChat);
-router.get("/:userId", findUserChat)
-router.get("/find/:firstId/:secondId", findChat)
+router.post("/createchat", asyncHandler(chatController.createChat));
+router.post("/finduser", asyncHandler(chatController.findUserChat))
+router.post("/findchat", asyncHandler(chatController.findChat))
 
 module.exports = router

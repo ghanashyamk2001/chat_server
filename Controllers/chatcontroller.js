@@ -1,89 +1,72 @@
-const chatModel = require("../Models/chatModel")
+const chatModel = require("../Models/chatModelDbDef").chatDbDef;
+const userModel = require("../Models/chatModelDbDef").userDbDef;
+const Sequelize = require("sequelize");
+const genChatId = require("../service/id_gen")
+const { Op } = require("sequelize");
 
-//createChat
-//getuserChat
-//findchat
+const createChat = async (req, res) => {
 
-const createChat = async(req, res) => {
-    const { firstId, secondId } = req.body
- try{
-    const Chat = await chatModel.findOne({
-    members: { $all: [firstId, secondId] },
-    })
-    if (Chat) return res.status(200).json(Chat)
-    
-    const newChat = new chatModel({
-        members: [firstId, secondId]
+  const body = req.body
+  const { firstId, secondId } = body
+  const firstUser = await userModel.findByPk(firstId);
+  const secondUser = await userModel.findByPk(secondId);
 
-    })
-    const response = await newChat.save()
+  let chat = await chatModel.findOne({
+    where: {
+      members: { [Sequelize.Op.contains]: [firstId, secondId] },
+    },
+  });
 
-    res.status(200).json(response)
+  if (chat) {
+    return res.status(200).json(chat);
+  }
 
-
-} catch (error){
-    console.log(error);
-    res.status(500).json(error);
-}
-}
-
-const findUserChat = async (req, res) =>{
-    const userId = req.params.userId
-    
-    
-    try{
-        const chats = await chatModel.find({
-            members: { $in: [userId]}
-        })
-    
-    res.status(200).json(chats)
-
-    } catch (error){
-        console.log(error);
-        res.status(500).json(error);
-    }
-}
-
-const findChat = async (req, res) =>{
-
-    const { firstId, secondId } = req.params
-    
-    try{
-        const chats = await chatModel.findOne({
-            members: { $all: [ firstId, secondId ]},
-        })
-        console.log(chats);
-    
-    res.status(200).json(chats)
+  const newChat = await chatModel.create({
+    members: [firstId, secondId],
+    firstIdName: firstUser.name,
+    secondIdName: secondUser.name,
+    id: genChatId(),
+  });
+  res.status(200).json(newChat);
+};
 
 
-    } catch (error){
-        console.log(error);
-        res.status(500).json(error);
-    }
-}
+const findUserChat = async (req, res) => {
+  const body =  req.body
+  const { userId } = body
+  const chatList = await chatModel.findAll({
+    attributes: ["secondIdName", "members", "id"],
+    where: {
+      members: {
+        [Op.contains]: [userId],
+      },
+    },
+  });
+  if (!userId) {
+    const err = new Error("user not dound");
+    err.status = 400;
+    throw err;
+  }
+  res.status(200).json(chatList);
+};
 
+const findChat = async (req, res) => {
+  const body = req.body
+  const { firstId, secondId } = body;
 
-module.exports = {createChat, findUserChat, findChat};
+  const chats = await chatModel.findOne({
+    attributes: ["members", "id", "secondIdName"],
+    where: {
+      members: { [Op.contains]: [firstId, secondId] },
+    },
+  });
+  if ((!firstId, !secondId)) {
+    const err = new Error("invalid user");
+    err.status = 400;
+    throw err;
+  }
 
+  res.status(200).json(chats);
+};
 
-
-
-
-
-
-
-
-
-
-/*
-try{
-
-
-
-} catch (error){
-    console.log(error);
-    res.status(500).json(error);
-}
-
-*/
+module.exports = { createChat, findUserChat, findChat };
