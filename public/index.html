@@ -53,7 +53,7 @@
         padding: 10px 15px;
         border: none;
         border-radius: 4px;
-        background-color: #ff0000;
+        background-color: #000dff;
         color: #fff;
         font-size: 16px;
         cursor: pointer;
@@ -101,7 +101,7 @@
 
         // Connect to WebSocket server with the chatId
         socket = new WebSocket(
-          `ws://34.228.232.88:5000?chatId=${encodeURIComponent(chatId)}`
+          `ws://54.167.208.201:5000?chatId=${encodeURIComponent(chatId)}`
         );
 
         socket.onopen = async function () {
@@ -109,7 +109,7 @@
 
           try {
             const response = await fetch(
-              "http://34.228.232.88:5000/messages/getmessage",
+              "http://54.167.208.201:5000/messages/getmessage",
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -178,7 +178,7 @@
 
         try {
           const response = await fetch(
-            "http://34.228.232.88:5000/messages/createmessage",
+            "http://54.167.208.201:5000/messages/createmessage",
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
