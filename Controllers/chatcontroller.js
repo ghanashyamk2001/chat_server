@@ -30,25 +30,66 @@ const createChat = async (req, res) => {
   res.status(200).json(newChat);
 };
 
+const findUserChat = async (req, res,) => {
+  
+    const { userId } = req.body;
 
-const findUserChat = async (req, res) => {
-  const body =  req.body
-  const { userId } = body
-  const chatList = await chatModel.findAll({
-    attributes: ["secondIdName", "members", "id"],
-    where: {
-      members: {
-        [Op.contains]: [userId],
+    if (!userId) {
+      const err = new Error("User ID not found");
+      err.status = 400;
+      throw err;
+    }
+
+    const chatList = await chatModel.findAll({
+      where: {
+        members: {
+          [Op.contains]: [userId],
+        },
       },
-    },
-  });
-  if (!userId) {
-    const err = new Error("user not dound");
-    err.status = 400;
-    throw err;
-  }
-  res.status(200).json(chatList);
+    });
+
+    const result = chatList.map(chat => {
+      const [firstId, secondId] = chat.members;
+      let otherUserId, otherUserName;
+
+      if (userId === firstId) {
+        otherUserId = secondId;
+        otherUserName = chat.secondIdName;
+      } else if (userId === secondId) {
+        otherUserId = firstId;
+        otherUserName = chat.firstIdName;
+      }
+
+      return {
+        chatId: chat.id,
+        otherUserId,
+        otherUserName,
+      };
+    });
+
+    res.status(200).json(result);
+  
 };
+
+// const findUserChat = async (req, res) => {
+//   const body =  req.body
+//   const { userId } = body
+//   const chatList = await chatModel.findAll({
+//     attributes: [ "members", "id"],
+//     where: {
+//       members: {
+//         [Op.contains]: [userId],
+//       },
+//     },
+//   });
+  
+//   if (!userId) {
+//     const err = new Error("user not dound");
+//     err.status = 400;
+//     throw err;
+//   }
+//   res.status(200).json(chatList);
+// };
 
 const findChat = async (req, res) => {
   const body = req.body
