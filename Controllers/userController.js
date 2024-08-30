@@ -70,4 +70,13 @@ const getUsers = async (req, res) => {
   res.status(200).json(user);
 };
 
-module.exports = { registerUser, loginUser, getUsers };
+
+const getAll = async (req, res) => {
+  const body = req.body
+
+  const user = await userModel.findAll(body);
+
+  res.status(200).json(user);
+};
+
+module.exports = { registerUser, loginUser, getUsers, getAll };
