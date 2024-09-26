@@ -1,16 +1,29 @@
 const Sequelize = require("sequelize");
 
 const chatModel = {
-  members: {
+  users: {
     type: Sequelize.JSONB,
   },
   id: {
     type: Sequelize.STRING,
     primaryKey: true,
   },
-  firstIdName: Sequelize.STRING,
-  secondIdName: Sequelize.STRING,
-};
+  chatName : {
+    type :Sequelize.STRING
+  },
+  isGroup: {
+    type: Sequelize.BOOLEAN
+  },
+  groupAdmin:{
+    type: Sequelize.STRING
+  },
+  senderIdName: {
+    type : Sequelize.STRING
+  },
+  receiverIdName:{
+    type:Sequelize.STRING
+  }
+}   
 
 module.exports = {
   chatModel,

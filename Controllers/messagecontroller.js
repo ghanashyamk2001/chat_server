@@ -1,49 +1,41 @@
-const messageModel = require("../Models/chatModelDbDef").messageDbDef;
-const userModel = require("../Models/chatModelDbDef").userDbDef;
-const genChatId = require("../service/id_gen")
+const chatModelDbDef = require("../Models/chatModelDbDef")
+const dbDef = require("../../framework/dbModels/dbDef")
+const dbService = require("../../framework/services/dbService")
+const customError = require("../../framework/errorControllers/customError")
+const errorMessage = require("../../framework/errorControllers/errorMessage.json")
 
-const createMessage = async (req, res) => {
-  const body = req.body
-  const { chatId, senderId, text } = body
-  if (text === "") {
-    const err = new Error("No message where entered");
-    err.status = 404;
-    throw err;
+async function create (req) {
+  let body = req.body
+  let id = dbService.createId()
+  if (body.text === ""){
+    throw new customError(errorMessage.dataNotFound)
   }
-  const senderUser = await userModel.findByPk(senderId);
-  if (!senderUser) {
-    const err = new Error("sender not found");
-    err.status = 404;
-    throw err;
+  let receiverUser = await dbService.findByPk(dbDef.profile,body.receiverId)
+  if (!receiverUser){
+    throw new customError(errorMessage.UserNotFound)
   }
-  const message = new messageModel({
-    
-    chatId,
-    senderId,
-    text,
-    id: genChatId(),
-    senderName: senderUser.name,
-  });
-
-  const response = await message.save();
-
-  res.status(200).json(response);
-};
-
-const getMessage = async (req, res) => {
-  const body =  req.body
-  const { chatId } = body;
-
-  const message = await messageModel.findAll({
-    where: { chatId },
-    order: [["createdAt", "ASC"]],
-  });
-  if (message.length === 0) {
-    const err = new Error("No message found in this chat");
-    err.status = 404;
-    throw err;
+  let data ={
+    chatId: body.chatId,
+    receiverId: body.receiverId,
+    text: body.text,
+    receiverName: receiverUser.name
   }
-  res.status(200).json(message);
-};
+  let message = await dbService.create(chatModelDbDef.messageDbDef, data, id)
+  return message
+}
 
-module.exports = { createMessage, getMessage };
+async function find(req) {
+  let body = req.body
+  let {chatId} = body
+  let criteria = {
+    chatId :  chatId 
+  }
+
+  let message = await dbService.find(chatModelDbDef.messageDbDef,criteria )
+  if (message.length === 0 ){
+    throw new customError(errorMessage.dataNotFound)
+  }
+  return message
+}
+
+module.exports = { create, find };

@@ -1,113 +1,157 @@
-const chatModel = require("../Models/chatModelDbDef").chatDbDef;
-const userModel = require("../Models/chatModelDbDef").userDbDef;
-const Sequelize = require("sequelize");
-const genChatId = require("../service/id_gen")
-const { Op } = require("sequelize");
+const chatModel = require("../Models/chatModelDbDef");
+const dbServive = require("../../framework/services/dbService");
+const dbDef = require("../../framework/dbModels/dbDef");
+const errorMessage = require("../../framework/errorControllers/errorMessage.json");
+const CustomError = require("../../framework/errorControllers/customError");
+const { Op, JSON } = require("sequelize");
 
-const createChat = async (req, res) => {
-
-  const body = req.body
-  const { firstId, secondId } = body
-  const firstUser = await userModel.findByPk(firstId);
-  const secondUser = await userModel.findByPk(secondId);
-
-  let chat = await chatModel.findOne({
-    where: {
-      members: { [Sequelize.Op.contains]: [firstId, secondId] },
-    },
-  });
-
+async function create(req) {
+  let body = req.body;
+  let firstId = body.sessionData.profileId;
+  let secondId = body.receiverId;
+  let id = dbServive.createId();
+  let senderUser = await dbServive.findByPk(dbDef.profile, firstId);
+  let receiverUser = await dbServive.findByPk(dbDef.profile, secondId);
+  let criteria = {
+    members: { [Op.contains]: [firstId, secondId] },
+  };
+  let chat = await dbServive.findOneData(chatModel.chatDbDef, criteria);
   if (chat) {
-    return res.status(200).json(chat);
+    return chat;
   }
+  let data = {
+    users: [firstId, secondId],
+    senderdIdName: senderUser.name,
+    receiverIdName: receiverUser.name,
+    chatName: "sender",
+    groupAdmin: "",
+    isGroup: false,
+  };
+  let chatCreate = await dbServive.create(chatModel.chatDbDef, data, id);
+  return chatCreate;
+}
 
-  const newChat = await chatModel.create({
-    members: [firstId, secondId],
-    firstIdName: firstUser.name,
-    secondIdName: secondUser.name,
-    id: genChatId(),
-  });
-  res.status(200).json(newChat);
-};
+async function groupChat(req) {
+  let body = req.body;
+  id = dbServive.createId();
+  if (!body.chatName || !body.users) {
+    throw new CustomError(errorMessage.dataNotFound);
+  }
+  let data = {
+    chatName: body.chatName,
+    users: body.users,
+    isGroup: true,
+    groupAdmin: body.sessionData.profileId,
+  };
+  let groupChat = await dbServive.create(chatModel.chatDbDef, data, id);
+  return groupChat;
+}
 
-const findUserChat = async (req, res,) => {
-  
-    const { userId } = req.body;
+async function ChatUpdate(req) {
+  body = req.body;
+  let findByPk = await dbServive.findByPk(chatModel.chatDbDef, body.id);
+  if (!findByPk) {
+    throw new CustomError(errorMessage.dataNotFound);
+  }
+  let update = await dbServive.update(findByPk, body);
+  return update;
+}
 
-    if (!userId) {
-      const err = new Error("User ID not found");
-      err.status = 400;
-      throw err;
-    }
+async function removeUser(req) {
+  body = req.body;
+  let userDetail = await dbServive.findByPk(chatModel.chatDbDef, body.id);
+  if (!userDetail) {
+    throw new CustomError(errorMessage.dataNotFound);
+  }
+  if (!userDetail.users || !userDetail.users.includes(body.userId)) {
+    throw new CustomError(errorMessage.UserAlreadyExist);
+  }
+  let array = userDetail.users;
+  let data = await array.filter((item) => item !== body.userId);
+  console.log(data);
+  criteria = {
+    users: data,
+  };
+  let file = await dbServive.update(userDetail, criteria);
+  console.log(file);
+  let updatedChat = await dbServive.findByPk(chatModel.chatDbDef, body.id);
+  return updatedChat;
+}
 
-    const chatList = await chatModel.findAll({
-      where: {
-        members: {
-          [Op.contains]: [userId],
-        },
-      },
-    });
+async function addUser(req) {
+  let body = req.body;
+  let userDetail = await dbServive.findByPk(chatModel.chatDbDef, body.id);
+  if (!userDetail) {
+    throw new CustomError(errorMessage.dataNotFound);
+  }
+  let users = userDetail.users;
+  if(!users.includes(body.userId)){
+    users.push(body.userId);
+  } else{
+    throw new CustomError(errorMessage.UserAlreadyExist)
+  }
+  criteria = {
+    users: users,
+  };
 
-    const result = chatList.map(chat => {
-      const [firstId, secondId] = chat.members;
-      let otherUserId, otherUserName;
+  let updatedChat = await dbServive.update(userDetail, criteria);
+  return updatedChat;
+}
 
-      if (userId === firstId) {
-        otherUserId = secondId;
-        otherUserName = chat.secondIdName;
-      } else if (userId === secondId) {
-        otherUserId = firstId;
-        otherUserName = chat.firstIdName;
-      }
+async function find(req) {
+  let body = req.body;
+  let senderId = body.sessionData.profileId;
 
-      return {
-        chatId: chat.id,
-        otherUserId,
-        otherUserName,
-      };
-    });
-
-    res.status(200).json(result);
-  
-};
-
-// const findUserChat = async (req, res) => {
-//   const body =  req.body
-//   const { userId } = body
-//   const chatList = await chatModel.findAll({
-//     attributes: [ "members", "id"],
-//     where: {
-//       members: {
-//         [Op.contains]: [userId],
-//       },
-//     },
-//   });
-  
-//   if (!userId) {
-//     const err = new Error("user not dound");
-//     err.status = 400;
-//     throw err;
-//   }
-//   res.status(200).json(chatList);
-// };
-
-const findChat = async (req, res) => {
-  const body = req.body
-  const { firstId, secondId } = body;
-
-  const chats = await chatModel.findOne({
-    attributes: ["members", "id", "secondIdName"],
-    where: {
-      members: { [Op.contains]: [firstId, secondId] },
+  if (!senderId) {
+    throw new CustomError(errorMessage.UserNotFound);
+  }
+  criteria = {
+    members: {
+      [Op.contains]: [senderId],
     },
+  };
+  let chatList = await dbServive.find(chatModel.chatDbDef, criteria);
+  let result = chatList.map((chat) => {
+    const [firstId, secondId] = chat.members;
+    let otherUserId;
+    let otherUserName;
+
+    if (senderId === firstId) {
+      otherUserId = secondId;
+      otherUserName = chat.receiverIdName;
+    } else if (senderId === secondId) {
+      otherUserId = firstId;
+      otherUserName = chat.senderdIdName;
+    }
+    return {
+      chatId: chat.id,
+      otherUserId,
+      otherUserName,
+    };
   });
+  return result;
+}
+async function findByPk(req) {
+  let body = req.body;
+  let firstId = body.sessionData.profileId;
+  let secondId = body.receiverId;
+
+  let criteria = {
+    members: { [Op.contains]: [firstId, secondId] },
+  };
+  let chat = await dbServive.findOneData(chatModel.chatDbDef, criteria);
   if ((!firstId, !secondId)) {
-    const err = new Error("invalid user");
-    err.status = 400;
-    throw err;
+    throw new CustomError(errorMessage.UserNotFound);
   }
+  return chat;
+}
 
-  res.status(200).json(chats);
+module.exports = {
+  create,
+  find,
+  findByPk,
+  groupChat,
+  ChatUpdate,
+  removeUser,
+  addUser,
 };
-
-module.exports = { createChat, findUserChat, findChat };

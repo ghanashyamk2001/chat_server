@@ -1,9 +1,8 @@
 const chatModelDb = require("./dbModel/chatModel")
 const messageModelDb = require("./dbModel/messageModel")
-const userModelDb = require("./dbModel/userModel")
 const { Sequelize } = require("sequelize")
 
-const chatObj = new Sequelize(require("../config/config").devolop)
+const chatObj = new Sequelize(require("../../config/local.config").development)
 
 const chatDbDef = chatObj.define("chatModel",
     chatModelDb.chatModel,
@@ -22,16 +21,9 @@ const messageDbDef = chatObj.define("messageModel",
     }
 )
 
-const userDbDef = chatObj.define("userModel",
-    userModelDb.userModel,
-    {
-        tableName : "userModel",
-        timestamps : true
-    }
 
-)
 
 chatObj.authenticate()
 chatObj.sync({ alter : true })
 
-module.exports = { chatDbDef, messageDbDef, userDbDef}
+module.exports = { chatDbDef, messageDbDef, }

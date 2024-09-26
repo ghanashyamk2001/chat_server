@@ -4,9 +4,9 @@ const { toDefaultValue } = require("sequelize/lib/utils");
 const messageModel = {
   id: { type: Sequelize.STRING, primaryKey: true },
   chatId: { type: Sequelize.STRING },
-  senderId: { type: Sequelize.STRING },
+  receiverId: { type: Sequelize.STRING },
   text: { type: Sequelize.STRING },
-  senderName: { type: Sequelize.STRING, defaultValue: '', allowNull: false},
+  receiverName: { type: Sequelize.STRING, defaultValue: '', allowNull: false},
 };
 
 module.exports = {
